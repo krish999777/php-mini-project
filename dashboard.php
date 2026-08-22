@@ -49,38 +49,13 @@ $userRole = htmlspecialchars($_SESSION['role'] ?? 'candidate');
     <!-- Main Content -->
     <main class="dashboard-main">
         <div class="dashboard-card">
-            <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
-                <h1 style="font-family: var(--font-serif); font-size: 2rem; color: var(--text-main); margin-bottom: 6px;">
+            <div>
+                <h1 style="font-family: var(--font-serif); font-size: 2rem; color: var(--text-main); margin-bottom: 8px;">
                     Welcome back, <?php echo $userName; ?>!
                 </h1>
-                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                <p style="color: var(--text-muted); font-size: 1rem;">
                     Logged in as <strong><?php echo $userEmail; ?></strong>
                 </p>
-            </div>
-
-            <div style="background-color: #F9FAFB; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px;">
-                <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--brand-green); margin-bottom: 8px;">
-                    ✅ Authentication Completed Successfully
-                </h3>
-                <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.6;">
-                    Your account is registered in MySQL with secure password hashing. 
-                </p>
-
-                <?php if ($userRole === 'candidate'): ?>
-                    <div style="margin-top: 20px; padding: 16px; background-color: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-md);">
-                        <strong style="color: var(--brand-green);">Next Step (Candidate Profile):</strong>
-                        <p style="color: #374151; font-size: 0.9rem; margin-top: 4px;">
-                            We can now build the candidate profile management, resume builder, and skills showcase as defined in the SRS.
-                        </p>
-                    </div>
-                <?php else: ?>
-                    <div style="margin-top: 20px; padding: 16px; background-color: #F5F3FF; border: 1px solid #DDD6FE; border-radius: var(--radius-md);">
-                        <strong style="color: #7C3AED;">Next Step (Recruiter Dashboard):</strong>
-                        <p style="color: #374151; font-size: 0.9rem; margin-top: 4px;">
-                            We can now build the recruiter candidate browsing, resume preview, and search tools as defined in the SRS.
-                        </p>
-                    </div>
-                <?php endif; ?>
             </div>
         </div>
     </main>
