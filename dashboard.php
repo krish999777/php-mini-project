@@ -51,6 +51,33 @@ if ($userRole === 'candidate') {
         error_log("Dashboard query error: " . $e->getMessage());
     }
 }
+$candidatesList = [];
+if ($userRole === 'recruiter') {
+    try {
+        $candStmt = $pdo->prepare("
+            SELECT 
+                u.id, 
+                u.name, 
+                u.email, 
+                COALESCE(cp.headline, '') AS headline, 
+                COALESCE(cp.phone, '') AS phone, 
+                COALESCE(cp.location, '') AS location, 
+                COALESCE(cp.skills, '') AS skills, 
+                COALESCE(cp.experience_years, 0) AS experience_years, 
+                COALESCE(cp.education, '') AS education, 
+                COALESCE(cp.bio, '') AS bio,
+                u.created_at
+            FROM users u
+            LEFT JOIN candidate_profiles cp ON u.id = cp.user_id
+            WHERE u.role = 'candidate'
+            ORDER BY cp.updated_at DESC, u.id DESC
+        ");
+        $candStmt->execute();
+        $candidatesList = $candStmt->fetchAll();
+    } catch (PDOException $e) {
+        error_log("Dashboard recruiter candidate fetch error: " . $e->getMessage());
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -284,19 +311,154 @@ if ($userRole === 'candidate') {
                 <script src="assets/js/candidate.js"></script>
 
             <?php else: ?>
-                <!-- Recruiter View Baseline -->
-                <div style="background-color: #F9FAFB; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px;">
-                    <h3 style="font-size: 1.1rem; font-weight: 600; color: #7C3AED; margin-bottom: 8px;">
-                        Recruiter Workspace
-                    </h3>
-                    <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.6;">
-                        You are logged in as a <strong>Recruiter</strong>. You will be able to search, filter, and view all registered candidate resumes and profiles.
-                    </p>
+                <!-- RECRUITER DISCOVERY SUITE -->
+                <div class="recruiter-suite">
+                    
+                    <!-- Search & Filter Toolbar -->
+                    <div class="recruiter-toolbar">
+                        <div class="recruiter-search-box">
+                            <span class="recruiter-search-icon">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </span>
+                            <input type="text" id="recruiter-search-input" class="recruiter-search-input" placeholder="Search candidates by name, skill, title, or location...">
+                            <button type="button" id="btn-clear-search" class="btn-clear-search" title="Clear search">&times;</button>
+                        </div>
+                        <div>
+                            <span class="candidate-counter-badge">
+                                <span id="candidate-count-number"><?php echo count($candidatesList); ?></span> Candidates Available
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Candidates Cards Grid -->
+                    <div class="candidates-grid" id="candidates-grid">
+                        <?php if (!empty($candidatesList)): ?>
+                            <?php foreach ($candidatesList as $cand): 
+                                $cName = htmlspecialchars($cand['name'] ?? 'Candidate');
+                                $cHeadline = htmlspecialchars($cand['headline'] ?? 'Job Seeker');
+                                $cExp = (int)($cand['experience_years'] ?? 0);
+                                $cLocation = htmlspecialchars($cand['location'] ?? '');
+                                $avatarInitial = strtoupper(substr($cName, 0, 1) ?: 'C');
+                                $skillsRaw = trim($cand['skills'] ?? '');
+                                $candSkills = !empty($skillsRaw) ? array_filter(array_map('trim', explode(',', $skillsRaw))) : [];
+                            ?>
+                                <div class="candidate-card">
+                                    <div class="cand-card-top">
+                                        <div class="cand-avatar"><?php echo $avatarInitial; ?></div>
+                                        <div class="cand-card-main-info">
+                                            <h3 class="cand-card-name"><?php echo $cName; ?></h3>
+                                            <div class="cand-card-headline"><?php echo $cHeadline; ?></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="cand-card-meta">
+                                        <span class="cand-card-exp-tag"><?php echo $cExp; ?> yr<?php echo $cExp === 1 ? '' : 's'; ?> exp</span>
+                                        <?php if (!empty($cLocation)): ?>
+                                            <span class="cand-card-location">📍 <?php echo $cLocation; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div class="cand-card-skills">
+                                        <?php if (!empty($candSkills)): ?>
+                                            <?php foreach (array_slice($candSkills, 0, 4) as $s): ?>
+                                                <span class="cand-skill-chip"><?php echo htmlspecialchars($s); ?></span>
+                                            <?php endforeach; ?>
+                                            <?php if (count($candSkills) > 4): ?>
+                                                <span class="cand-skill-chip-more">+<?php echo (count($candSkills) - 4); ?></span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span style="font-size: 0.8rem; color: #9CA3AF; font-style: italic;">No skills specified</span>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div class="cand-card-footer">
+                                        <button type="button" class="btn-view-profile" data-id="<?php echo $cand['id']; ?>">
+                                            View Full Resume
+                                        </button>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div class="candidates-empty-state" id="candidates-empty-state" style="<?php echo empty($candidatesList) ? 'display:block;' : 'display:none;'; ?>">
+                        <div class="empty-icon">🔍</div>
+                        <h3 style="font-size: 1.15rem; color: #374151; margin-bottom: 6px;">No matching candidates found</h3>
+                        <p style="color: #6B7280; font-size: 0.9rem; max-width: 400px; margin: 0 auto;">
+                            Try adjusting your search terms or clearing the filter to see all registered candidates.
+                        </p>
+                    </div>
+
                 </div>
+
+                <!-- Candidate Detail Modal -->
+                <div class="candidate-detail-modal" id="candidate-detail-modal">
+                    <div class="modal-backdrop" id="modal-backdrop"></div>
+                    <div class="modal-sheet">
+                        
+                        <div class="modal-header-bar">
+                            <span style="font-size: 0.88rem; font-weight: 600; color: #7C3AED;">
+                                Candidate Profile & Resume
+                            </span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <button type="button" id="modal-print-btn" class="btn-pill-outline" style="border-color: #D1D5DB; color: #374151; padding: 6px 14px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; margin: 0;">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                    </svg>
+                                    <span>Print Resume</span>
+                                </button>
+                                <button type="button" class="modal-close-btn" id="modal-close-btn" aria-label="Close modal">&times;</button>
+                            </div>
+                        </div>
+
+                        <div class="modal-body">
+                            <!-- Resume Content Inside Modal -->
+                            <header class="resume-header">
+                                <div>
+                                    <h2 class="resume-name" id="modal-cand-name">Candidate Name</h2>
+                                    <div class="resume-headline" id="modal-cand-headline" style="color: #7C3AED;">Professional Headline</div>
+                                    <div class="resume-contact-meta" id="modal-cand-contacts"></div>
+                                </div>
+                                <div>
+                                    <span class="resume-exp-badge" id="modal-cand-exp-badge" style="background: #F5F3FF; color: #7C3AED; border-color: #DDD6FE;">
+                                        0 Years Experience
+                                    </span>
+                                </div>
+                            </header>
+
+                            <!-- Summary -->
+                            <section class="resume-section">
+                                <h3 class="resume-section-title">Professional Summary</h3>
+                                <div class="resume-section-body" id="modal-cand-bio"></div>
+                            </section>
+
+                            <!-- Skills -->
+                            <section class="resume-section">
+                                <h3 class="resume-section-title">Key Skills & Competencies</h3>
+                                <div class="resume-skills-grid" id="modal-cand-skills"></div>
+                            </section>
+
+                            <!-- Education -->
+                            <section class="resume-section" style="margin-bottom: 0;">
+                                <h3 class="resume-section-title">Education & Credentials</h3>
+                                <div class="resume-section-body" id="modal-cand-education"></div>
+                            </section>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Recruiter Scripts -->
+                <script src="assets/js/recruiter.js"></script>
+
             <?php endif; ?>
 
         </div>
     </main>
 </body>
 </html>
+
 
